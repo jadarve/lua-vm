@@ -44,9 +44,9 @@ fn check_loader(args: &CliArgs) {
     let header = chunk_reader.read_header().unwrap();
     println!("{:#?}", header);
 
-    let upsize = chunk_reader.read_u8().unwrap();
-    println!("upsize: {}", upsize);
-
-    let function = chunk_reader.read_function().unwrap();
-    println!("{:#?}", function);
+    // let upsize = chunk_reader.read_u8().unwrap();
+    // println!("upsize: {}", upsize);
+    //
+    // let function = chunk_reader.read_function().unwrap();
+    // println!("{:#?}", function);
 }

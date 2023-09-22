@@ -1,5 +1,6 @@
 use crate::vm53::chunk::{Function, Header};
 use std::{io::Read, string};
+use crate::io::{TryRead, TryReadError};
 
 // pub trait ChunkReader {
 //     fn read_header(&mut self) -> Result<Header, ()>;
@@ -23,26 +24,13 @@ pub struct Lua53ChunkReader<R: Read> {
 
 impl<R: Read> Lua53ChunkReader<R> {
     pub fn read_header(&mut self) -> Result<Header, ()> {
-        // buffer where the header will be read into
-        let mut bytes = [0u8; 31];
 
-        self.reader.read_exact(&mut bytes).unwrap();
+        return match Header::try_read(&mut self.reader) {
+            Ok(header) => Ok(header),
 
-        // let header = Header::from_byte_slice(&bytes);
-
-        let header = Header {
-            signature: [bytes[0], bytes[1], bytes[2], bytes[3]],
-            version: bytes[4],
-            format: bytes[5],
-            data: [bytes[6], bytes[7], bytes[8], bytes[9], bytes[10], bytes[11]],
-            instruction_size: bytes[12],
-            int_size: bytes[13],
-            number_size: bytes[14],
-            int_value: i64::from_le_bytes(bytes[15..23].try_into().unwrap()),
-            number_value: f64::from_le_bytes(bytes[23..31].try_into().unwrap()),
-        };
-
-        Ok(header)
+            // TODO
+            Err(_) => Err(()),
+        }
     }
 
     pub fn read_function(&mut self) -> Result<Function, ()> {
