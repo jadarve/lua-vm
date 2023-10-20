@@ -1,22 +1,8 @@
-use crate::vm53::chunk::{Function, Header};
+use crate::vm53::chunk::{Function};
+use crate::vm53::header::Header;
 use std::{io::Read, string};
 use crate::io::{TryRead, TryReadError};
 
-// pub trait ChunkReader {
-//     fn read_header(&mut self) -> Result<Header, ()>;
-
-//     fn read_function(&mut self) -> Result<Function, ()>;
-
-//     fn read_size_t(&mut self) -> Result<usize, ()>;
-
-//     fn read_string(&mut self) -> Result<String, ()>;
-
-//     fn read_u8(&mut self) -> Result<u8, ()>;
-
-//     fn read_i32(&mut self) -> Result<i32, ()>;
-
-//     fn read_vecu32(&mut self) -> Result<Vec<u32>, ()>;
-// }
 
 pub struct Lua53ChunkReader<R: Read> {
     pub reader: R,
@@ -70,8 +56,6 @@ impl<R: Read> Lua53ChunkReader<R> {
     pub fn read_size_t(&mut self) -> Result<usize, ()> {
         let byte_count = std::mem::size_of::<usize>();
 
-        // let lua_byte_count = ((byte_count * 8) + 6) / 7;
-
         let mut size_t = 0_usize;
 
         let mut buffer = [0u8; 1];
@@ -83,6 +67,7 @@ impl<R: Read> Lua53ChunkReader<R> {
             let byte = buffer[0];
             size_t <<= 7;
             size_t |= (byte & 0x7f) as usize;
+            println!("current size: {}", size_t);
 
             // check we have reached the end of the size_t
             if byte & 0x80u8 != 0 {
@@ -119,6 +104,49 @@ impl<R: Read> Lua53ChunkReader<R> {
     }
 
     pub fn read_string(&mut self) -> Result<String, ()> {
+
+        /*
+        static TString *LoadString (LoadState *S, Proto *p) {
+          lua_State *L = S->L;
+          size_t size = LoadByte(S);
+          TString *ts;
+          if (size == 0xFF)
+            LoadVar(S, size);
+          if (size == 0)
+            return NULL;
+          else if (--size <= LUAI_MAXSHORTLEN) {  /* short string? */
+            char buff[LUAI_MAXSHORTLEN];
+            LoadVector(S, buff, size);
+            ts = luaS_newlstr(L, buff, size);
+          }
+          else {  /* long string */
+            ts = luaS_createlngstrobj(L, size);
+            setsvalue2s(L, L->top, ts);  /* anchor it ('loadVector' can GC) */
+            luaD_inctop(L);
+            LoadVector(S, getstr(ts), size);  /* load directly in final place */
+            L->top--;  /* pop string */
+          }
+          luaC_objbarrier(L, p, ts);
+          return ts;
+        }
+         */
+
+
+        match self.read_u8() {
+            Ok(0xFFu8) => {
+                // TODO: fully load a size_t
+            },
+            Ok(0x00u8) => {
+                // TODO: empty string
+            },
+            Ok(value) => {
+                // TODO: Can be short or long string
+            },
+            Err(e) => {
+
+            },
+        }
+
         let size_t = self.read_size_t().unwrap() - 1;
 
         let buffer = &mut vec![0u8; size_t];

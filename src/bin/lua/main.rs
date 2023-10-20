@@ -37,12 +37,31 @@ fn main() {
 fn check_loader(args: &CliArgs) {
     println!("check_loader");
 
-    let reader = fs::File::open(args.file.clone()).unwrap();
+    let mut reader = fs::File::open(args.file.clone()).unwrap();
 
     let mut chunk_reader = vm53::Lua53ChunkReader { reader };
 
     let header = chunk_reader.read_header().unwrap();
     println!("{:#?}", header);
+
+    // ignore one byte. TODO
+    // let unused_byte = chunk_reader.read_u8().unwrap();
+    // println!("unused byte: {}", unused_byte);
+
+    let function = chunk_reader.read_function().unwrap();
+    println!("{:#?}", function);
+
+    // for i in 0..4 {
+    //     println!("next byte: {} : {}", i, chunk_reader.read_u8().unwrap());
+    // }
+
+    // let mut bytes = [0u8; 4];
+    // match reader.read_exact(&mut bytes) {
+    //     Ok(()) => {
+    //         println!("following bytes: {:?}", bytes);
+    //     },
+    //     Err(_) => {},
+    // }
 
     // let upsize = chunk_reader.read_u8().unwrap();
     // println!("upsize: {}", upsize);
