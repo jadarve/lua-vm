@@ -1,91 +1,119 @@
-use crate::vm53::chunk::{Function};
+use crate::io::{Reader, TryRead, TryReadError};
+use crate::vm53::function::Function;
 use crate::vm53::header::Header;
 use std::{io::Read, string};
-use crate::io::{TryRead, TryReadError};
 
+const SHORT_STRING_MAX_LENGTH: usize = 40;
 
 pub struct Lua53ChunkReader<R: Read> {
     pub reader: R,
 }
 
-impl<R: Read> Lua53ChunkReader<R> {
-    pub fn read_header(&mut self) -> Result<Header, ()> {
+impl<R: Read> Reader for Lua53ChunkReader<R> {
+    fn read_i32(&mut self) -> Result<i32, ()> {
+        let byte_count = std::mem::size_of::<i32>();
 
-        return match Header::try_read(&mut self.reader) {
-            Ok(header) => Ok(header),
+        let buffer = &mut vec![0u8; byte_count];
 
-            // TODO
-            Err(_) => Err(()),
-        }
-    }
-
-    pub fn read_function(&mut self) -> Result<Function, ()> {
-        let source = self.read_string().unwrap();
-        let line_defined = self.read_i32().unwrap();
-        let last_line_defined = self.read_i32().unwrap();
-
-        println!(
-            "read_function: source: {} line_defined: {} : last_line_defined: {}",
-            source, line_defined, last_line_defined
-        );
-
-        let num_params = self.read_u8().unwrap();
-        println!("read_function: num_params: {}", num_params);
-
-        let is_vararg = self.read_u8().unwrap();
-        println!("read_function: is_vararg: {}", is_vararg);
-
-        let max_stack_size = self.read_u8().unwrap();
-        println!("read_function: max_stack_size: {}", max_stack_size);
-
-        let code = self.read_vecu32().unwrap();
-
-        let function = Function {
-            source,
-            line_defined,
-            last_line_defined,
-            num_params,
-            is_vararg,
-            max_stack_size,
-            code: code,
+        return match self.reader.read_exact(buffer) {
+            Ok(()) => {
+                Ok(i32::from_le_bytes(buffer.as_slice().try_into().unwrap()))
+            }
+            Err(e) => {
+                Err(())
+            }
         };
-
-        Ok(function)
     }
 
-    pub fn read_size_t(&mut self) -> Result<usize, ()> {
+    fn read_size_t(&mut self) -> Result<usize, ()> {
         let byte_count = std::mem::size_of::<usize>();
 
-        let mut size_t = 0_usize;
+        let buffer = &mut vec![0u8; byte_count];
 
-        let mut buffer = [0u8; 1];
-
-        let mut i = 0;
-        loop {
-            self.reader.read_exact(&mut buffer[0..1]).unwrap();
-
-            let byte = buffer[0];
-            size_t <<= 7;
-            size_t |= (byte & 0x7f) as usize;
-            println!("current size: {}", size_t);
-
-            // check we have reached the end of the size_t
-            if byte & 0x80u8 != 0 {
-                break;
+        return match self.reader.read_exact(buffer) {
+            Ok(()) => {
+                Ok(usize::from_le_bytes(buffer.as_slice().try_into().unwrap()))
             }
-
-            // if we read more than byte_count, the size_t is too big
-            i += 1;
-            if i == byte_count {
-                return Err(());
+            Err(e) => {
+                Err(())
             }
-        }
-
-        Ok(size_t)
+        };
     }
 
-    pub fn read_vecu32(&mut self) -> Result<Vec<u32>, ()> {
-        let size_t = self.read_size_t().unwrap();
+    fn read_string(&mut self) -> Result<String, ()> {
+        let first_byte = match self.read_u8() {
+            Ok(value) => value,
+            Err(e) => {
+                return Err(());
+            }
+        };
+
+        let size_t = match first_byte {
+            // fully load the string length
+            0xFFu8 => match self.read_size_t() {
+                Ok(value) => value,
+                Err(e) => return Err(())
+            }
+            other_value => {
+                other_value as usize
+            }
+        };
+
+        return if size_t == 0x00_usize {
+            println!("empty string");
+            Ok(String::new())
+        } else if size_t - 1 <= SHORT_STRING_MAX_LENGTH {
+
+            // the null terminator is not stored as part of the buffer
+            let buf_size = size_t - 1;
+            println!("short string: {}", buf_size);
+            // short string
+            let buffer = &mut vec![0u8; buf_size];
+            self.reader.read_exact(buffer).unwrap();
+
+            let string_value = String::from_utf8_lossy(&buffer[0..buf_size]).to_string();
+
+            println!(
+                "read_string: size: {}: {:?} : {}",
+                size_t, buffer, string_value
+            );
+            Ok(string_value)
+        } else {
+
+            // TODO: allocate string buffer in Lua stack
+            // the null terminator is not stored as part of the buffer
+            let buf_size = size_t - 1;
+            println!("long string: {}", buf_size);
+            // short string
+            let buffer = &mut vec![0u8; buf_size];
+            self.reader.read_exact(buffer).unwrap();
+
+            let string_value = String::from_utf8_lossy(&buffer[0..buf_size]).to_string();
+
+            println!(
+                "read_string: size: {}: {:?} : {}",
+                size_t, buffer, string_value
+            );
+            Ok(string_value)
+        };
+    }
+
+    fn read_u8(&mut self) -> Result<u8, ()> {
+        let mut buffer = [0u8; 1];
+        self.reader.read_exact(&mut buffer).unwrap();
+
+        Ok(buffer[0])
+    }
+
+    fn read_exact(&mut self, buffer: &mut [u8]) -> Result<(), ()> {
+        match self.reader.read_exact(buffer) {
+            Ok(_) => { Ok(()) }
+            Err(_) => { Err(()) }
+        }
+    }
+
+    fn read_vec_u32(&mut self) -> Result<Vec<u32>, ()> {
+        let size_t = self.read_i32().unwrap() as usize;
 
         println!("read_vecu32 size_t: {}", size_t);
 
@@ -102,101 +130,20 @@ impl<R: Read> Lua53ChunkReader<R> {
 
         Ok(vec)
     }
+}
 
-    pub fn read_string(&mut self) -> Result<String, ()> {
-
-        /*
-        static TString *LoadString (LoadState *S, Proto *p) {
-          lua_State *L = S->L;
-          size_t size = LoadByte(S);
-          TString *ts;
-          if (size == 0xFF)
-            LoadVar(S, size);
-          if (size == 0)
-            return NULL;
-          else if (--size <= LUAI_MAXSHORTLEN) {  /* short string? */
-            char buff[LUAI_MAXSHORTLEN];
-            LoadVector(S, buff, size);
-            ts = luaS_newlstr(L, buff, size);
-          }
-          else {  /* long string */
-            ts = luaS_createlngstrobj(L, size);
-            setsvalue2s(L, L->top, ts);  /* anchor it ('loadVector' can GC) */
-            luaD_inctop(L);
-            LoadVector(S, getstr(ts), size);  /* load directly in final place */
-            L->top--;  /* pop string */
-          }
-          luaC_objbarrier(L, p, ts);
-          return ts;
-        }
-         */
-
-
-        match self.read_u8() {
-            Ok(0xFFu8) => {
-                // TODO: fully load a size_t
-            },
-            Ok(0x00u8) => {
-                // TODO: empty string
-            },
-            Ok(value) => {
-                // TODO: Can be short or long string
-            },
-            Err(e) => {
-
-            },
-        }
-
-        let size_t = self.read_size_t().unwrap() - 1;
-
-        let buffer = &mut vec![0u8; size_t];
-        self.reader.read_exact(buffer).unwrap();
-
-        // TODO: omit the last byte in the buffer to remove the null character
-        let string_value = String::from_utf8_lossy(&buffer[0..size_t]).to_string();
-        println!(
-            "read_string: size: {}: {:?} : {}",
-            size_t, buffer, string_value
-        );
-        Ok(string_value)
+impl<R: Read> Lua53ChunkReader<R> {
+    pub fn read_header(&mut self) -> Result<Header, ()> {
+        return match Header::try_read(self) {
+            Ok(header) => Ok(header),
+            Err(_) => Err(()),
+        };
     }
 
-    pub fn read_u8(&mut self) -> Result<u8, ()> {
-        let mut buffer = [0u8; 1];
-        self.reader.read_exact(&mut buffer).unwrap();
-
-        Ok(buffer[0])
-    }
-
-    pub fn read_i32(&mut self) -> Result<i32, ()> {
-        let byte_count = std::mem::size_of::<i32>();
-
-        // let lua_byte_count = ((byte_count * 8) + 6) / 7;
-
-        let mut u_value = 0_u32;
-
-        let mut buffer = [0u8; 1];
-
-        let mut i = 0;
-        loop {
-            self.reader.read_exact(&mut buffer[0..1]).unwrap();
-
-            let byte = buffer[0];
-            u_value <<= 7;
-            u_value |= (byte & 0x7f) as u32;
-
-            // check we have reached the end of the u_value
-            if byte & 0x80u8 != 0 {
-                break;
-            }
-
-            // if we read more than byte_count, the u_value is too big
-            i += 1;
-            if i == byte_count {
-                return Err(());
-            }
-        }
-
-        Ok(i32::from_le_bytes(u_value.to_ne_bytes()))
+    pub fn read_function(&mut self) -> Result<Function, ()> {
+        return match Function::try_read(self) {
+            Ok(function) => Ok(function),
+            Err(_) => Err(()),
+        };
     }
 }

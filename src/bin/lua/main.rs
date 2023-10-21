@@ -5,6 +5,7 @@ use std::io::Read;
 use std::mem;
 
 use lua_tools::vm53;
+use lua_tools::io::{Reader};
 
 #[derive(Parser, Debug)]
 struct CliArgs {
@@ -45,8 +46,8 @@ fn check_loader(args: &CliArgs) {
     println!("{:#?}", header);
 
     // ignore one byte. TODO
-    // let unused_byte = chunk_reader.read_u8().unwrap();
-    // println!("unused byte: {}", unused_byte);
+    let unused_byte = chunk_reader.read_u8().unwrap();
+    println!("unused byte: {}", unused_byte);
 
     let function = chunk_reader.read_function().unwrap();
     println!("{:#?}", function);

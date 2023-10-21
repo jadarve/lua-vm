@@ -2,7 +2,7 @@
 use std::io::Read;
 use std::mem::size_of;
 use crate::io;
-use crate::io::TryReadError;
+use crate::io::{Reader, TryReadError};
 
 const HEADER_SIGNATURE: [u8; 4] = [0x1B, 0x4C, 0x75, 0x61];
 const HEADER_VERSION: u8 = 0x53;
@@ -40,7 +40,7 @@ pub struct Header {
     pub number_value: f64,
 }
 
-impl<R: Read> io::TryRead<R> for Header {
+impl<R: Reader> io::TryRead<R> for Header {
 
     fn try_read(reader: &mut R) -> Result<Self, io::TryReadError> {
 
@@ -50,7 +50,7 @@ impl<R: Read> io::TryRead<R> for Header {
         match reader.read_exact(&mut constant_buffer) {
             Ok(()) => {},
             Err(e) => {
-                return Err(TryReadError::IOError { err: e});
+                return Err(TryReadError::AppError {err: "".to_string()});
             }
         }
 
@@ -147,7 +147,7 @@ impl<R: Read> io::TryRead<R> for Header {
     }
 }
 
-fn load_control_integer_number(reader: &mut dyn Read, lua_integer_size: usize) -> Result<i64, TryReadError> {
+fn load_control_integer_number(reader: &mut dyn Reader, lua_integer_size: usize) -> Result<i64, TryReadError> {
 
     ///////////////////////////////////////////////////////////////////////////
     // TODO: could factor out
@@ -157,7 +157,7 @@ fn load_control_integer_number(reader: &mut dyn Read, lua_integer_size: usize) -
     match reader.read_exact(lua_integer_value_buffer.as_mut_slice()) {
         Ok(()) => {},
         Err(e) => {
-            return Err(TryReadError::IOError { err: e});
+            return Err(TryReadError::AppError { err: "".to_string()});
         }
     }
     ///////////////////////////////////////////////////////////////////////////
@@ -184,7 +184,7 @@ fn load_control_integer_number(reader: &mut dyn Read, lua_integer_size: usize) -
     };
 }
 
-fn load_control_number_number(reader: &mut dyn Read, lua_number_size: usize) -> Result<f64, TryReadError> {
+fn load_control_number_number(reader: &mut dyn Reader, lua_number_size: usize) -> Result<f64, TryReadError> {
 
     let mut buffer = Vec::<u8>::new();
     buffer.resize(lua_number_size.into(), 0);
@@ -192,7 +192,7 @@ fn load_control_number_number(reader: &mut dyn Read, lua_number_size: usize) -> 
     match reader.read_exact(buffer.as_mut_slice()) {
         Ok(()) => {},
         Err(e) => {
-            return Err(TryReadError::IOError { err: e});
+            return Err(TryReadError::AppError { err: "".to_string()});
         }
     }
 

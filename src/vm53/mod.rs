@@ -1,9 +1,9 @@
-mod chunk;
+mod function;
+mod header;
 mod loader;
 mod opcodes;
-mod header;
 
-pub use chunk::*;
+pub use function::*;
+pub use header::*;
 pub use loader::*;
 pub use opcodes::*;
-pub use header::*;
