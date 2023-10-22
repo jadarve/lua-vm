@@ -20,19 +20,19 @@ impl<R: Reader> io::TryRead<R> for Function {
         let line_defined = reader.read_i32().unwrap();
         let last_line_defined = reader.read_i32().unwrap();
 
-        println!(
-            "read_function: source: {} line_defined: {} : last_line_defined: {}",
-            source, line_defined, last_line_defined
-        );
+        // println!(
+        //     "read_function: source: {} line_defined: {} : last_line_defined: {}",
+        //     source, line_defined, last_line_defined
+        // );
 
         let num_params = reader.read_u8().unwrap();
-        println!("read_function: num_params: {}", num_params);
+        // println!("read_function: num_params: {}", num_params);
 
         let is_vararg = reader.read_u8().unwrap();
-        println!("read_function: is_vararg: {}", is_vararg);
+        // println!("read_function: is_vararg: {}", is_vararg);
 
         let max_stack_size = reader.read_u8().unwrap();
-        println!("read_function: max_stack_size: {}", max_stack_size);
+        // println!("read_function: max_stack_size: {}", max_stack_size);
 
         let code = reader.read_vec_u32().unwrap();
 
@@ -47,8 +47,6 @@ impl<R: Reader> io::TryRead<R> for Function {
         };
 
         Ok(function)
-
-        // todo!()
     }
 }
 

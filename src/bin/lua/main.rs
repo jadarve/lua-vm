@@ -1,11 +1,9 @@
 use clap::Parser;
-use std::fmt;
 use std::fs;
-use std::io::Read;
-use std::mem;
 
 use lua_tools::vm53;
 use lua_tools::io::{Reader};
+use lua_tools::vm53::{Instruction, OpCode};
 
 #[derive(Parser, Debug)]
 struct CliArgs {
@@ -51,6 +49,14 @@ fn check_loader(args: &CliArgs) {
 
     let function = chunk_reader.read_function().unwrap();
     println!("{:#?}", function);
+
+    println!("Instructions");
+    for op in function.code {
+
+        let instruction = Instruction::new(op);
+        // println!("{} {} {}", instruction.opcode().unwrap(), instruction.register_a(), instruction.register_b())
+        println!("{}", instruction);
+    }
 
     // for i in 0..4 {
     //     println!("next byte: {} : {}", i, chunk_reader.read_u8().unwrap());

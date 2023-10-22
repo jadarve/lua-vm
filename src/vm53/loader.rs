@@ -1,7 +1,7 @@
 use crate::io::{Reader, TryRead, TryReadError};
 use crate::vm53::function::Function;
 use crate::vm53::header::Header;
-use std::{io::Read, string};
+use std::{io::Read};
 
 const SHORT_STRING_MAX_LENGTH: usize = 40;
 
@@ -66,34 +66,34 @@ impl<R: Read> Reader for Lua53ChunkReader<R> {
 
             // the null terminator is not stored as part of the buffer
             let buf_size = size_t - 1;
-            println!("short string: {}", buf_size);
+            // println!("short string: {}", buf_size);
             // short string
             let buffer = &mut vec![0u8; buf_size];
             self.reader.read_exact(buffer).unwrap();
 
             let string_value = String::from_utf8_lossy(&buffer[0..buf_size]).to_string();
 
-            println!(
-                "read_string: size: {}: {:?} : {}",
-                size_t, buffer, string_value
-            );
+            // println!(
+            //     "read_string: size: {}: {:?} : {}",
+            //     size_t, buffer, string_value
+            // );
             Ok(string_value)
         } else {
 
             // TODO: allocate string buffer in Lua stack
             // the null terminator is not stored as part of the buffer
             let buf_size = size_t - 1;
-            println!("long string: {}", buf_size);
+            // println!("long string: {}", buf_size);
             // short string
             let buffer = &mut vec![0u8; buf_size];
             self.reader.read_exact(buffer).unwrap();
 
             let string_value = String::from_utf8_lossy(&buffer[0..buf_size]).to_string();
 
-            println!(
-                "read_string: size: {}: {:?} : {}",
-                size_t, buffer, string_value
-            );
+            // println!(
+            //     "read_string: size: {}: {:?} : {}",
+            //     size_t, buffer, string_value
+            // );
             Ok(string_value)
         };
     }
@@ -115,7 +115,7 @@ impl<R: Read> Reader for Lua53ChunkReader<R> {
     fn read_vec_u32(&mut self) -> Result<Vec<u32>, ()> {
         let size_t = self.read_i32().unwrap() as usize;
 
-        println!("read_vecu32 size_t: {}", size_t);
+        // println!("read_vecu32 size_t: {}", size_t);
 
         let mut vec = vec![0u32; size_t];
 
